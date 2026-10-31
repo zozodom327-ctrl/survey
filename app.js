@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const TYPES = { text: 'Text', yesno: 'Yes / No', duration: 'Duration' };
+  const TYPES = { text: 'Text', yesno: 'Yes / No', duration: 'Duration', message: 'Message' };
   const YESNO = [
     { v: 'yes', label: 'Yes' },
     { v: 'no', label: 'No' },
@@ -128,6 +128,14 @@
   // ---------- Survey validation ----------
 
   function isLimit(v) { return v == null || (Number.isInteger(v) && v >= 1); }
+  function optText(v) { return typeof v === 'string' && v.trim() ? v.trim() : null; }
+
+  /** Display names for items by position: "Question 3", "Message 1" (each counted separately). */
+  function itemLabels(items) {
+    let qn = 0;
+    let mn = 0;
+    return items.map((q) => (q && q.type === 'message' ? `Message ${++mn}` : `Question ${++qn}`));
+  }
 
   /** Returns { survey, errors[] }. errors items: { index, message } (index null = whole file). */
   function validateSurvey(raw) {
@@ -142,28 +150,40 @@
       add(null, 'The file has no "questions" list.');
       return { survey: null, errors };
     }
-    if (raw.questions.length === 0) add(null, 'The survey has no questions.');
+    if (!raw.questions.some((q) => q && q.type !== 'message')) add(null, 'The survey has no questions.');
 
+    const labels = itemLabels(raw.questions);
     const seen = new Set();
     const questions = raw.questions.map((q, i) => {
-      const n = i + 1;
-      if (!q || typeof q !== 'object') { add(i, `Question ${n} is not a valid entry.`); return null; }
+      const n = labels[i];
+      if (!q || typeof q !== 'object') { add(i, `${n} is not a valid entry.`); return null; }
       const out = { id: typeof q.id === 'string' && q.id ? q.id : newId(), type: q.type };
-      if (seen.has(out.id)) add(i, `Question ${n} has the same id as an earlier question ("${out.id}").`);
+      if (seen.has(out.id)) add(i, `${n} has the same id as an earlier item ("${out.id}").`);
       seen.add(out.id);
-      if (!TYPES[q.type]) add(i, `Question ${n} has an unknown type "${q.type}" (use text, yesno or duration).`);
+
+      if (q.type === 'message') {
+        out.title = typeof q.title === 'string' ? q.title : '';
+        if (!out.title.trim()) add(i, `${n} has no title.`);
+        out.body = typeof q.body === 'string' ? q.body : '';
+        out.showTitle = !!q.showTitle;
+        return out;
+      }
+
+      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, duration or message).`);
       out.prompt = typeof q.prompt === 'string' ? q.prompt : '';
-      if (!out.prompt.trim()) add(i, `Question ${n} has no prompt.`);
+      if (!out.prompt.trim()) add(i, `${n} has no prompt.`);
       out.required = q.required !== false;
+      if (typeof q.description === 'string') out.description = q.description;
       if (q.type === 'text') {
         out.wordLimit = q.wordLimit ?? null;
-        if (!isLimit(out.wordLimit)) add(i, `Question ${n}: word limit must be a whole number of 1 or more.`);
+        if (!isLimit(out.wordLimit)) add(i, `${n}: word limit must be a whole number of 1 or more.`);
       } else if (q.type === 'yesno' || q.type === 'duration') {
         const r = q.reason && typeof q.reason === 'object' ? q.reason : {};
         out.reason = { enabled: !!r.enabled };
         if (out.reason.enabled) {
           out.reason.wordLimit = r.wordLimit ?? null;
-          if (!isLimit(out.reason.wordLimit)) add(i, `Question ${n}: reason word limit must be a whole number of 1 or more.`);
+          if (!isLimit(out.reason.wordLimit)) add(i, `${n}: reason word limit must be a whole number of 1 or more.`);
+          if (typeof r.label === 'string') out.reason.label = r.label;
         }
       }
       return out;
@@ -175,17 +195,26 @@
     };
   }
 
-  /** Clean JSON for saving: drops empty limits, keeps field order readable. */
+  /** Clean JSON for saving: drops empty limits, labels and descriptions; keeps field order readable. */
   function serialise(survey) {
     const out = {
       version: 1,
       title: survey.title,
       questions: survey.questions.map((q) => {
+        if (q.type === 'message') {
+          return { id: q.id, type: 'message', title: (q.title || '').trim(), body: (q.body || '').trim(), showTitle: !!q.showTitle };
+        }
         const o = { id: q.id, type: q.type, prompt: q.prompt.trim(), required: q.required !== false };
+        const desc = optText(q.description);
+        if (desc) o.description = desc;
         if (q.type === 'text' && q.wordLimit != null && q.wordLimit !== '') o.wordLimit = q.wordLimit;
         if (q.type !== 'text') {
           o.reason = { enabled: !!(q.reason && q.reason.enabled) };
-          if (o.reason.enabled && q.reason.wordLimit != null && q.reason.wordLimit !== '') o.reason.wordLimit = q.reason.wordLimit;
+          if (o.reason.enabled) {
+            const label = optText(q.reason.label);
+            if (label) o.reason.label = label;
+            if (q.reason.wordLimit != null && q.reason.wordLimit !== '') o.reason.wordLimit = q.reason.wordLimit;
+          }
         }
         return o;
       }),
@@ -292,14 +321,14 @@
     }
 
     function renderStart(resumable) {
-      const n = survey.questions.length;
+      const n = survey.questions.filter((q) => q.type !== 'message').length;
       const begin = () => { state = freshState(); save(); renderQuestion(); };
       const actions = resumable
         ? [
             h('p', {}, 'Continue where you left off?'),
             h('div', { class: 'row center' },
               h('button', { type: 'button', class: 'btn-primary', onclick: () => { state = resumable; renderQuestion(); } },
-                `Continue at question ${resumable.index + 1}`),
+                'Continue'),
               h('button', { type: 'button', onclick: begin }, 'Start over')),
           ]
         : [h('button', { type: 'button', class: 'btn-primary btn-start', onclick: begin }, 'Start')];
@@ -367,22 +396,25 @@
     function renderQuestion() {
       const i = state.index;
       const q = survey.questions[i];
-      const total = survey.questions.length;
-      const a = state.answers[q.id] || (state.answers[q.id] = {});
-      const isLast = i === total - 1;
+      const isLast = i === survey.questions.length - 1;
+      // Messages don't count as questions in the numbering or progress.
+      const totalQ = survey.questions.filter((x) => x.type !== 'message').length;
+      const qNum = survey.questions.slice(0, i + 1).filter((x) => x.type !== 'message').length;
+      const isMessage = q.type === 'message';
+      const a = isMessage ? {} : state.answers[q.id] || (state.answers[q.id] = {});
 
       const errEl = h('div', { class: 'field-error', role: 'status' });
       const nextBtn = h('button', { type: 'button', class: 'btn-primary', onclick: goNext }, isLast ? 'Finish' : 'Next');
       const backBtn = h('button', { type: 'button', onclick: goBack }, 'Back');
 
       function refresh() {
-        const r = check(q, a);
+        const r = isMessage ? { ok: true } : check(q, a);
         nextBtn.disabled = !r.ok;
         errEl.textContent = r.message || '';
         save();
       }
       function goNext() {
-        if (!check(q, a).ok) return;
+        if (!isMessage && !check(q, a).ok) return;
         if (isLast) return finish();
         state.index++;
         save();
@@ -395,7 +427,23 @@
         renderQuestion();
       }
 
+      if (isMessage) {
+        app.replaceChildren(
+          h('section', {},
+            previewBanner(),
+            progress(qNum, totalQ),
+            h('h2', { class: 'prompt', tabindex: '-1' }, q.title),
+            optText(q.body) ? h('p', { class: 'message-body' }, q.body.trim()) : null,
+            h('div', { class: 'nav' }, backBtn, nextBtn))
+        );
+        save();
+        app.querySelector('.prompt').focus();
+        return;
+      }
+
       const promptId = 'prompt-' + q.id;
+      const desc = optText(q.description);
+      const descId = desc ? 'desc-' + q.id : null;
       let body;
       if (q.type === 'text') {
         body = wordBox({
@@ -432,7 +480,7 @@
       let reason = null;
       if (q.reason && q.reason.enabled) {
         reason = h('div', { class: 'reason' }, wordBox({
-          id: 'reason', label: 'Reason (optional)', value: a.reason, limit: q.reason.wordLimit,
+          id: 'reason', label: `${optText(q.reason.label) || 'Reason'} (optional)`, value: a.reason, limit: q.reason.wordLimit,
           onInput: (v) => { a.reason = v; refresh(); }, onEnter: goNext,
         }));
       }
@@ -440,9 +488,10 @@
       app.replaceChildren(
         h('section', {},
           previewBanner(),
-          h('p', { class: 'qcount', 'aria-label': `Question ${i + 1} of ${total}` }, `Question ${roman(i + 1)} of ${roman(total)}`),
-          progress(i + 1, total),
-          h('h2', { class: 'prompt', id: promptId, tabindex: '-1' }, q.prompt),
+          h('p', { class: 'qcount', 'aria-label': `Question ${qNum} of ${totalQ}` }, `Question ${roman(qNum)} of ${roman(totalQ)}`),
+          progress(qNum, totalQ),
+          h('h2', { class: 'prompt', id: promptId, tabindex: '-1', 'aria-describedby': descId }, q.prompt),
+          desc ? h('p', { class: 'qdesc', id: descId }, desc) : null,
           body, reason, errEl,
           h('div', { class: 'nav' }, backBtn, nextBtn))
       );
@@ -456,7 +505,12 @@
         title: survey.title,
         finishedAt,
         elapsed: finishedAt - state.startedAt,
-        items: survey.questions.map((q) => ({ q, a: toAnswer(q, state.answers[q.id] || {}) })),
+        // Messages appear on the card only as section headings, and only when ticked.
+        items: survey.questions
+          .filter((q) => q.type !== 'message' || q.showTitle)
+          .map((q) => (q.type === 'message'
+            ? { q, heading: q.title.trim() }
+            : { q, a: toAnswer(q, state.answers[q.id] || {}) })),
       };
       if (!preview) store(KEY_PROGRESS, undefined);
       // The card is drawn with web fonts, so wait (briefly) for them before drawing.
@@ -466,7 +520,7 @@
 
     /** Segmented progress for short surveys, a plain bar for long ones. */
     function progress(n, total) {
-      const attrs = { role: 'progressbar', 'aria-valuemin': '1', 'aria-valuemax': String(total), 'aria-valuenow': String(n), 'aria-label': 'Progress' };
+      const attrs = { role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(n), 'aria-label': 'Progress' };
       if (total <= 30) {
         const segs = [];
         for (let k = 1; k <= total; k++) segs.push(h('span', { class: k <= n ? 'on' : null }));
@@ -486,7 +540,7 @@
 
     function renderResults(results) {
       const canvas = ResultCard.draw(results);
-      const img = h('img', { class: 'result-img', alt: 'Results image: ' + ResultCard.asText(results).replace(/\n+/g, '. ') });
+      const img = h('img', { class: 'result-img', alt: 'Results image: ' + ResultCard.asText(results).replace(/[*_>]/g, '').replace(/\n+/g, '. ') });
       img.src = canvas.toDataURL('image/png');
       const status = h('div', { class: 'status', role: 'status' });
       const fileName = 'checkin-' + localDateKey(new Date(results.finishedAt)) + '.png';
@@ -560,7 +614,7 @@
       no: { label: 'No', bg: '#6f6470', fg: '#ffffff' },
       declined: { label: YESNO[2].label, bg: null, border: '#8f7d8a', fg: '#d2c1cb' },
     };
-    const FONTS = ['600 38px Fraunces', '400 16px Newsreader', 'italic 400 16px Newsreader', '600 21px Newsreader'];
+    const FONTS = ['600 38px Fraunces', 'italic 600 22px Fraunces', '400 16px Newsreader', 'italic 400 16px Newsreader', '600 21px Newsreader'];
 
     /** Resolves once the card's fonts are loaded, or after 2.5 s so a slow network never blocks the card. */
     function ready() {
@@ -569,11 +623,14 @@
       return Promise.race([loads, new Promise((r) => setTimeout(r, 2500))]);
     }
 
+    /** Splits an answer into what the card shows. A custom reason label puts the reason on its own lines. */
     function answerParts(item) {
       const { q, a } = item;
       if (q.type === 'text') return { pill: null, text: a.text };
+      const label = q.reason && q.reason.enabled ? optText(q.reason.label) : null;
+      const d = q.type === 'duration' && a.seconds != null ? formatDuration(a.seconds) : null;
+      if (label) return { pill: q.type === 'yesno' ? a.value : null, text: d, reasonLabel: label, reason: a.reason };
       if (q.type === 'yesno') return { pill: a.value, text: a.reason };
-      const d = a.seconds == null ? null : formatDuration(a.seconds);
       return { pill: null, text: d && a.reason ? `${d} — ${a.reason}` : d || (a.reason ? '— ' + a.reason : null) };
     }
 
@@ -602,19 +659,27 @@
       return lines;
     }
 
-    /** Lays out one question + answer at (0, 0). Returns { ops, h }. */
+    /** Lays out one question + answer (or a message heading) at (0, 0). Returns { ops, h, heading }. */
     function measureItem(ctx, item, width, sz, lh) {
       const ops = [];
       let y = 0;
-      const qFont = `400 ${sz.q}px ${BODY}`;
-      ctx.font = qFont;
-      for (const line of wrap(ctx, item.q.prompt, width, width)) {
-        ops.push({ kind: 'text', str: line, x: 0, y, font: qFont, color: C.q, size: sz.q });
-        y += lh(sz.q);
+      const lines = (str, font, color, size) => {
+        ctx.font = font;
+        for (const line of wrap(ctx, str, width, width)) {
+          ops.push({ kind: 'text', str: line, x: 0, y, font, color, size });
+          y += lh(size);
+        }
+      };
+
+      if (item.heading != null) {
+        lines(item.heading, `italic 600 ${sz.head}px ${SERIF}`, C.frame, sz.head);
+        return { ops, h: y + 10, heading: true };
       }
+
+      lines(item.q.prompt, `400 ${sz.q}px ${BODY}`, C.q, sz.q);
       y += 3;
 
-      const { pill, text } = answerParts(item);
+      const { pill, text, reasonLabel, reason } = answerParts(item);
       const aFont = `${pill ? 400 : 600} ${sz.a}px ${BODY}`;
       const rowH = lh(sz.a);
       let firstWidth = width;
@@ -629,22 +694,29 @@
         ops.push({ kind: 'pill', x: 0, y: y + (rowH - ph) / 2, w: pw, h: ph, label, font: pFont, p });
         firstWidth = width - pw - 10;
         x0 = pw + 10;
-        if (!text) return { ops, h: y + rowH + ITEM_GAP };
-      } else if (!text) {
-        ops.push({ kind: 'text', str: '—', x: 0, y, font: aFont, color: C.faint, size: sz.a });
-        return { ops, h: y + rowH + ITEM_GAP };
       }
-      ctx.font = aFont;
-      wrap(ctx, text, width, firstWidth).forEach((line, li) => {
-        if (line) ops.push({ kind: 'text', str: line, x: li === 0 ? x0 : 0, y, font: aFont, color: C.answer, size: sz.a });
+      if (text) {
+        ctx.font = aFont;
+        wrap(ctx, text, width, firstWidth).forEach((line, li) => {
+          if (line) ops.push({ kind: 'text', str: line, x: li === 0 ? x0 : 0, y, font: aFont, color: C.answer, size: sz.a });
+          y += rowH;
+        });
+      } else {
+        if (!pill) ops.push({ kind: 'text', str: '—', x: 0, y, font: aFont, color: C.faint, size: sz.a });
         y += rowH;
-      });
+      }
+
+      if (reason) {
+        y += 4;
+        lines(reasonLabel, `italic 400 ${sz.q}px ${BODY}`, C.q, sz.q);
+        lines(reason, `400 ${sz.a}px ${BODY}`, C.answer, sz.a);
+      }
       return { ops, h: y + ITEM_GAP };
     }
 
     function layout(ctx, results, k) {
       const f = (n) => Math.round(n * k);
-      const sz = { date: f(38), sub: f(19), small: f(16), q: f(16), a: f(21), pill: f(16) };
+      const sz = { date: f(38), sub: f(19), small: f(16), q: f(16), a: f(21), pill: f(16), head: f(22) };
       const lh = (s) => Math.round(s * 1.3);
       const ops = [];
       let y = 48;
@@ -676,6 +748,7 @@
         let acc = 0;
         for (let i = 1; i < blocks.length; i++) {
           acc += blocks[i - 1].h;
+          if (blocks[i - 1].heading) continue; // never leave a heading at the foot of the left column
           const tallest = Math.max(acc, total - acc);
           if (tallest < best) { best = tallest; split = i; }
         }
@@ -762,14 +835,97 @@
         '',
       ];
       for (const item of results.items) {
-        const { pill, text } = answerParts(item);
+        if (item.heading != null) { out.push(`__${item.heading}__`, ''); continue; }
+        const { pill, text, reasonLabel, reason } = answerParts(item);
         const ans = pill ? PILL[pill].label + (text ? ' — ' + text : '') : text || '—';
-        out.push(item.q.prompt, '> ' + ans.replace(/\n/g, '\n> '), '');
+        out.push(item.q.prompt, '> ' + ans.replace(/\n/g, '\n> '));
+        if (reason) out.push(`> *${/[?:.!]$/.test(reasonLabel) ? reasonLabel : reasonLabel + ':'}* ` + reason.replace(/\n/g, '\n> '));
+        out.push('');
       }
       return out.join('\n').trim();
     }
 
     return { draw, asText, ready };
+  })();
+
+  // ---------- Publishing straight to GitHub ----------
+  // Optional. With a fine-grained token (this repo only, "Contents: Read and write") the editor
+  // commits survey.json itself. The token is kept in this browser's storage and nowhere else.
+
+  const KEY_GITHUB = 'dailySurvey.github';
+
+  const GitHub = (() => {
+    function settings() { return load(KEY_GITHUB) || {}; }
+    function saveSettings(s) { store(KEY_GITHUB, s); }
+    function connected() { const s = settings(); return !!(s.token && s.owner && s.repo); }
+
+    /** Guesses owner/repo from a GitHub Pages address: <owner>.github.io/<repo>/ */
+    function guess() {
+      const m = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname);
+      if (!m) return {};
+      const seg = location.pathname.split('/').filter(Boolean)[0];
+      return { owner: m[1], repo: seg && !seg.includes('.') ? seg : `${m[1]}.github.io` };
+    }
+
+    function toBase64(text) {
+      const bytes = new TextEncoder().encode(text);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      return btoa(bin);
+    }
+    function fromBase64(b64) {
+      const bin = atob(b64.replace(/\s/g, ''));
+      return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+    }
+
+    async function api(method, body) {
+      const s = settings();
+      const path = (s.path || 'survey.json').replace(/^\/+/, '');
+      const branch = s.branch || 'main';
+      const where = `${s.owner}/${s.repo}`;
+      const url = `https://api.github.com/repos/${encodeURIComponent(s.owner)}/${encodeURIComponent(s.repo)}/contents/`
+        + path.split('/').map(encodeURIComponent).join('/')
+        + (method === 'GET' ? `?ref=${encodeURIComponent(branch)}` : '');
+      let res;
+      try {
+        res = await fetch(url, {
+          method,
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${s.token}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            ...(body ? { 'Content-Type': 'application/json' } : {}),
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch (e) {
+        throw new Error('Couldn\'t reach GitHub. Check your connection and try again.');
+      }
+      if (res.ok) return res.json();
+      const reasons = {
+        401: 'GitHub rejected the token. It may have expired or been revoked: create a new one and connect again.',
+        403: `The token isn't allowed to change ${where}. Check it has "Contents: Read and write" access to that repository.`,
+        404: `GitHub couldn't find ${path} on the ${branch} branch of ${where}, or the token doesn't have access to that repository.`,
+        409: 'survey.json changed on GitHub while you were publishing. Press Publish again to retry.',
+        422: 'survey.json changed on GitHub while you were publishing. Press Publish again to retry.',
+      };
+      throw new Error(reasons[res.status] || `GitHub returned an error (${res.status}). Try again in a moment.`);
+    }
+
+    /** Reads the current file: { sha, text }. */
+    async function fetchFile() {
+      const j = await api('GET');
+      return { sha: j.sha, text: fromBase64(j.content || '') };
+    }
+
+    /** Commits new file text on top of `sha`. Returns the commit's web address. */
+    async function commit(text, sha) {
+      const j = await api('PUT', { message: 'Update survey questions', content: toBase64(text), sha, branch: settings().branch || 'main' });
+      return j.commit && j.commit.html_url;
+    }
+
+    return { settings, saveSettings, connected, guess, fetchFile, commit };
   })();
 
   // ---------- Editor ----------
@@ -807,6 +963,7 @@
     }
 
     function blank(type) {
+      if (type === 'message') return { id: newId(), type, title: '', body: '', showTitle: false };
       const q = { id: newId(), type, prompt: '', required: true };
       if (type === 'text') q.wordLimit = null;
       else q.reason = { enabled: false, wordLimit: null };
@@ -845,7 +1002,7 @@
         const i = +card.dataset.index;
         const mine = errors.filter((e) => e.index === i);
         card.classList.toggle('invalid', mine.length > 0);
-        card.querySelector('.card-errors').textContent = mine.map((e) => e.message.replace(/^Question \d+:? ?/, '')).join(' ');
+        card.querySelector('.card-errors').textContent = mine.map((e) => e.message.replace(/^(Question|Message) \d+:? ?/, '')).join(' ');
       }
       if (!errors.length && msgEl && msgEl.classList.contains('error-text')) message('', false);
     }
@@ -866,16 +1023,20 @@
           h('div', { class: 'toolbar panel' },
             h('div', {}, h('label', { for: 'ed-title' }, 'Survey title'), titleInput),
             h('div', { class: 'row' },
-              h('span', { class: 'muted' }, 'Add question:'),
+              h('span', { class: 'muted' }, 'Add:'),
               Object.entries(TYPES).map(([t, label]) => h('button', { type: 'button', class: 'btn-small', onclick: () => addQuestion(t) }, '+ ' + label))),
             h('div', { class: 'row' },
               h('button', { type: 'button', onclick: tryIt }, 'Try it'),
-              h('button', { type: 'button', class: 'btn-primary', onclick: saveFile }, 'Save'),
+              GitHub.connected()
+                ? [h('button', { type: 'button', class: 'btn-primary', onclick: publish }, 'Publish'),
+                  h('button', { type: 'button', onclick: saveFile }, 'Download')]
+                : h('button', { type: 'button', class: 'btn-primary', onclick: saveFile }, 'Save'),
               h('button', { type: 'button', onclick: copyJson }, 'Copy JSON'),
               h('button', { type: 'button', onclick: () => fileInput.click() }, 'Import'),
               h('button', { type: 'button', class: 'btn-danger', onclick: revert }, 'Revert'),
               fileInput),
             dirtyEl),
+          githubPanel(),
           msgEl,
           !live ? h('div', { class: 'banner error-text' }, 'The live survey.json could not be loaded: ', liveError) : null,
           listEl)
@@ -896,9 +1057,8 @@
 
     function card(q, i) {
       const n = draft.questions.length;
+      const name = itemLabels(draft.questions)[i];
       const pid = `p-${q.id}`;
-      const prompt = h('input', { id: pid, type: 'text', value: q.prompt, placeholder: 'Question text' });
-      prompt.addEventListener('input', () => { q.prompt = prompt.value; persist(); });
 
       const checkbox = (label, checked, onChange) => {
         const box = h('input', { type: 'checkbox', checked });
@@ -910,30 +1070,71 @@
         inp.addEventListener('input', () => onChange(parseLimit(inp.value)));
         return h('label', {}, label, inp);
       };
+      const textField = (label, value, placeholder, onChange) => {
+        const inp = h('input', { type: 'text', value: value || '', placeholder });
+        inp.addEventListener('input', () => onChange(inp.value));
+        return h('label', { class: 'grow' }, label, inp);
+      };
+      const textArea = (labelText, value, placeholder, onChange) => {
+        const id = `ta-${q.id}-${labelText.replace(/\W+/g, '')}`;
+        const ta = h('textarea', { id, class: 'ed-text', rows: 3, placeholder });
+        ta.value = value || '';
+        ta.addEventListener('input', () => onChange(ta.value));
+        return h('div', { class: 'ed-block' }, h('label', { for: id, class: 'sr-only' }, `${name} ${labelText}`), ta);
+      };
 
-      const opts = [checkbox('Required', q.required !== false, (v) => { q.required = v; persist(); })];
-      if (q.type === 'text') {
-        opts.push(limitField('Word limit', q.wordLimit, (v) => { q.wordLimit = v; persist(); }));
+      let main;
+      let opts;
+      let extra = null;
+      if (q.type === 'message') {
+        main = h('input', { id: pid, type: 'text', value: q.title, placeholder: 'Message title' });
+        main.addEventListener('input', () => { q.title = main.value; persist(); });
+        extra = textArea('description', q.body, 'What should people read here? (instructions, a reminder…)', (v) => { q.body = v; persist(); });
+        opts = [checkbox('Show title on results card', !!q.showTitle, (v) => { q.showTitle = v; persist(); })];
       } else {
-        q.reason = q.reason || { enabled: false };
-        const limit = limitField('Reason word limit', q.reason.wordLimit, (v) => { q.reason.wordLimit = v; persist(); });
-        limit.hidden = !q.reason.enabled;
-        opts.push(checkbox('Reason box', q.reason.enabled, (v) => { q.reason.enabled = v; limit.hidden = !v; persist(); }), limit);
+        main = h('input', { id: pid, type: 'text', value: q.prompt, placeholder: 'Question text' });
+        main.addEventListener('input', () => { q.prompt = main.value; persist(); });
+
+        // Description: shown under the prompt while answering, never on the results card.
+        const desc = textArea('description', q.description, 'Extra help for answering (not shown on the results card)', (v) => { q.description = v; persist(); });
+        desc.hidden = typeof q.description !== 'string';
+        extra = desc;
+
+        opts = [
+          checkbox('Required', q.required !== false, (v) => { q.required = v; persist(); }),
+          checkbox('Add description', typeof q.description === 'string', (v) => {
+            if (v) q.description = q.description || ''; else delete q.description;
+            desc.hidden = !v;
+            if (v) desc.querySelector('textarea').focus();
+            persist();
+          }),
+        ];
+        if (q.type === 'text') {
+          opts.push(limitField('Word limit', q.wordLimit, (v) => { q.wordLimit = v; persist(); }));
+        } else {
+          q.reason = q.reason || { enabled: false };
+          const label = textField('Reason label', q.reason.label, 'Reason', (v) => { q.reason.label = v; persist(); });
+          const limit = limitField('Reason word limit', q.reason.wordLimit, (v) => { q.reason.wordLimit = v; persist(); });
+          label.hidden = limit.hidden = !q.reason.enabled;
+          opts.push(checkbox('Reason box', q.reason.enabled, (v) => { q.reason.enabled = v; label.hidden = limit.hidden = !v; persist(); }), label, limit);
+        }
       }
 
       const handle = h('span', { class: 'handle', title: 'Drag to reorder', 'aria-hidden': 'true' }, '⠿');
-      const el = h('div', { class: 'qcard', 'data-index': String(i) },
+      const el = h('div', { class: 'qcard' + (q.type === 'message' ? ' is-message' : ''), 'data-index': String(i) },
         h('div', { class: 'qhead' },
           handle,
           h('span', { class: 'badge' }, TYPES[q.type] || q.type),
-          h('span', { class: 'qnum' }, `Question ${i + 1}`)),
-        h('label', { for: pid, class: 'sr-only' }, `Question ${i + 1} prompt`),
-        prompt,
+          h('span', { class: 'qnum' }, name)),
+        h('label', { for: pid, class: 'sr-only' }, q.type === 'message' ? `${name} title` : `${name} prompt`),
+        main,
+        q.type === 'message' ? extra : null,
         h('div', { class: 'opts' }, opts),
+        q.type === 'message' ? null : extra,
         h('div', { class: 'card-errors', role: 'status' }),
         h('div', { class: 'qactions' },
-          h('button', { type: 'button', class: 'btn-small', disabled: i === 0, 'aria-label': `Move question ${i + 1} up`, onclick: () => move(i, i - 1, 'up') }, '↑ Up'),
-          h('button', { type: 'button', class: 'btn-small', disabled: i === n - 1, 'aria-label': `Move question ${i + 1} down`, onclick: () => move(i, i + 1, 'down') }, '↓ Down'),
+          h('button', { type: 'button', class: 'btn-small', disabled: i === 0, 'aria-label': `Move ${name} up`, onclick: () => move(i, i - 1, 'up') }, '↑ Up'),
+          h('button', { type: 'button', class: 'btn-small', disabled: i === n - 1, 'aria-label': `Move ${name} down`, onclick: () => move(i, i + 1, 'down') }, '↓ Down'),
           h('button', { type: 'button', class: 'btn-small', onclick: () => duplicate(i) }, 'Duplicate'),
           h('button', { type: 'button', class: 'btn-small btn-danger', onclick: () => remove(i) }, 'Delete'))
       );
@@ -997,7 +1198,8 @@
 
     async function remove(i) {
       const q = draft.questions[i];
-      if (!await confirmBox(`Delete question ${i + 1}${q.prompt ? `: "${q.prompt}"` : ''}?`, 'Delete')) return;
+      const text = q.type === 'message' ? q.title : q.prompt;
+      if (!await confirmBox(`Delete ${itemLabels(draft.questions)[i].toLowerCase()}${text ? `: "${text}"` : ''}?`, 'Delete')) return;
       draft.questions.splice(i, 1);
       persist();
       renderList();
@@ -1007,6 +1209,95 @@
       const { survey, errors: errs } = validateSurvey(draft);
       if (errs.length) { validateDraft(); return; }
       Runner.start(survey, { preview: true, onExit: () => render() });
+    }
+
+    /** Commits the draft straight to the repo (needs a connected token). */
+    async function publish() {
+      if (!validateDraft()) return;
+      const survey = validateSurvey(draft).survey;
+      const text = serialise(survey);
+      message('Publishing…', false);
+      try {
+        const remote = await GitHub.fetchFile();
+        let remoteText = null;
+        try { remoteText = serialise(validateSurvey(JSON.parse(remote.text)).survey); } catch (e) { /* unreadable file counts as changed */ }
+        if (remoteText === text) { message('GitHub already has exactly this survey. Nothing to publish.', false); return; }
+        // Changed on GitHub since this editor loaded it (another device, or a manual upload)?
+        if (remoteText !== (live ? serialise(live) : null)
+          && !await confirmBox('survey.json on GitHub has changed since this editor loaded it, perhaps from another device. Publish anyway and replace it?', 'Replace it')) {
+          message('Not published. Revert loads the version on GitHub if you want to start from that.', false);
+          return;
+        }
+        const url = await GitHub.commit(text, remote.sha);
+        live = survey;
+        persist();
+        const parts = [h('strong', {}, 'Published. '), 'The live survey updates within a minute or two. '];
+        if (url) parts.push(h('a', { href: url, target: '_blank', rel: 'noopener' }, 'See the change on GitHub'));
+        message(parts, false);
+      } catch (e) {
+        message(e.message, true);
+      }
+    }
+
+    /** The "Publish straight to GitHub" settings panel. */
+    function githubPanel() {
+      const saved = GitHub.settings();
+      const s = { branch: 'main', path: 'survey.json', ...GitHub.guess(), ...saved };
+      const field = (id, label, value, attrs) => {
+        const inp = h('input', { id, type: 'text', value: value || '', autocomplete: 'off', spellcheck: 'false', ...attrs });
+        return [inp, h('div', { class: 'gh-field' }, h('label', { for: id }, label), inp)];
+      };
+      const [owner, ownerEl] = field('gh-owner', 'Account', s.owner, { placeholder: 'your-username' });
+      const [repo, repoEl] = field('gh-repo', 'Repository', s.repo, { placeholder: 'survey' });
+      const [branch, branchEl] = field('gh-branch', 'Branch', s.branch);
+      const [path, pathEl] = field('gh-path', 'File', s.path);
+      const [token, tokenEl] = field('gh-token', 'Token', '', {
+        type: 'password', placeholder: saved.token ? 'Saved. Paste a new one to replace it' : 'github_pat_…',
+      });
+      const status = h('p', { class: 'small muted', role: 'status' });
+
+      const connect = async () => {
+        const next = {
+          owner: owner.value.trim(), repo: repo.value.trim(),
+          branch: branch.value.trim() || 'main', path: path.value.trim() || 'survey.json',
+          token: token.value.trim() || saved.token || '',
+        };
+        if (!next.owner || !next.repo || !next.token) { status.textContent = 'Fill in the account, repository and token.'; return; }
+        GitHub.saveSettings(next);
+        status.textContent = 'Checking the connection…';
+        try {
+          await GitHub.fetchFile();
+          render();
+          message(`Connected to ${next.owner}/${next.repo}. Publish now saves straight to GitHub.`, false);
+        } catch (e) {
+          if (saved.token) GitHub.saveSettings(saved); else store(KEY_GITHUB, undefined);
+          status.textContent = e.message;
+        }
+      };
+      const disconnect = async () => {
+        if (!await confirmBox('Forget the GitHub token on this device?', 'Forget it')) return;
+        store(KEY_GITHUB, undefined);
+        render();
+        message('Disconnected. The token is no longer stored on this device. You can also delete it on GitHub.', false);
+      };
+
+      const isOn = GitHub.connected();
+      return h('details', { class: 'panel gh' },
+        h('summary', {}, isOn ? `GitHub: connected to ${saved.owner}/${saved.repo}` : 'Publish straight to GitHub'),
+        h('div', { class: 'gh-body' },
+          isOn ? null : h('ol', { class: 'gh-steps small' },
+            h('li', {}, 'Signed in to the GitHub account that owns the survey, open ',
+              h('a', { href: 'https://github.com/settings/personal-access-tokens/new', target: '_blank', rel: 'noopener' }, 'Settings → Developer settings → Fine-grained tokens → Generate new token'), '.'),
+            h('li', {}, 'Repository access: ', h('strong', {}, 'Only select repositories'), ', then pick the survey repository.'),
+            h('li', {}, 'Permissions: add ', h('strong', {}, 'Contents'), ' and set it to ', h('strong', {}, 'Read and write'), '.'),
+            h('li', {}, 'Choose an expiry, generate the token, and paste it below.')),
+          h('div', { class: 'gh-grid' }, ownerEl, repoEl, branchEl, pathEl),
+          tokenEl,
+          h('p', { class: 'small muted' }, 'The token is stored only in this browser, on this device. It is never put in the survey or the repository.'),
+          h('div', { class: 'row' },
+            h('button', { type: 'button', class: 'btn-small', onclick: connect }, isOn ? 'Save and check' : 'Connect'),
+            isOn ? h('button', { type: 'button', class: 'btn-small btn-danger', onclick: disconnect }, 'Disconnect') : null),
+          status));
     }
 
     function saveFile() {

@@ -18,31 +18,18 @@
       "wordLimit": 40
     },
     {
-      "id": "q_f5x6xq",
+      "id": "q_76c59f",
       "type": "text",
-      "prompt": "Breakfast:",
-      "required": true,
-      "wordLimit": 20
-    },
-    {
-      "id": "q_8caobr",
-      "type": "text",
-      "prompt": "Lunch:",
+      "prompt": "Snacks:",
       "required": true,
       "wordLimit": 20
     },
     {
       "id": "q_k403iq",
       "type": "text",
-      "prompt": "Dinner:",
+      "prompt": "Drinks:",
       "required": true,
-      "wordLimit": 20
-    },
-    {
-      "id": "q_76c59f",
-      "type": "text",
-      "prompt": "Snacks:",
-      "required": true,
+      "description": "List what you drank today, excluding water.",
       "wordLimit": 20
     },
     {
@@ -67,10 +54,12 @@
     {
       "id": "q_pmaef7",
       "type": "yesno",
-      "prompt": "Watched Porn? If yes, list what you watched.",
+      "prompt": "Watched Porn?",
       "required": true,
+      "description": "If \"yes\" provide a brief description, I will judge =p",
       "reason": {
         "enabled": true,
+        "label": "Description:",
         "required": false,
         "wordLimit": 30
       }
@@ -103,10 +92,22 @@
       "wordLimit": 40
     },
     {
+      "id": "q_y09u15",
+      "type": "duration",
+      "prompt": "Time Spent Doing Perfection Tasks",
+      "required": true,
+      "description": "List all time you spent doing tasks/chores assigned by me. Note down what you did, or select '0' if none.",
+      "reason": {
+        "enabled": true,
+        "label": "Tasks:",
+        "required": true
+      }
+    },
+    {
       "id": "q_qeh41m",
       "type": "message",
       "title": "The End!",
-      "body": "Post your results, as an image, in the discord server. The time will be counted by the time listed on the results, not the time of messaging - though there shouldn't be a large delay.",
+      "body": "Post your results, as an image, in the discord server.",
       "showTitle": false
     }
   ]

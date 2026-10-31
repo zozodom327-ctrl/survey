@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "title": "SurveyForPerfection",
+  "questions": [
+    {
+      "id": "q_tv",
+      "type": "text",
+      "prompt": "List the television shows you watched today",
+      "required": true,
+      "wordLimit": 30
+    },
+    {
+      "id": "q_food",
+      "type": "yesno",
+      "prompt": "Did you eat healthy today?",
+      "required": true,
+      "reason": { "enabled": true, "wordLimit": 20 }
+    },
+    {
+      "id": "q_exercise",
+      "type": "duration",
+      "prompt": "How long did you exercise today?",
+      "required": true,
+      "reason": { "enabled": false }
+    }
+  ]
+}

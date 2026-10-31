@@ -100,7 +100,8 @@
       "reason": {
         "enabled": true,
         "label": "Tasks:",
-        "required": true
+        "required": false,
+        "wordLimit": 40
       }
     },
     {

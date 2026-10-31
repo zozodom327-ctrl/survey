@@ -67,10 +67,10 @@
     {
       "id": "q_e3w565",
       "type": "duration",
-      "prompt": "Time Spent in Chastity",
+      "prompt": "Time Spent in Chastity. Note remaining hours in reason, if any.",
       "required": true,
       "reason": {
-        "enabled": false
+        "enabled": true
       }
     },
     {

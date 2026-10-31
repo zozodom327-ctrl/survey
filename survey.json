@@ -60,6 +60,7 @@
       "required": true,
       "reason": {
         "enabled": true,
+        "required": true,
         "wordLimit": 30
       }
     },
@@ -70,6 +71,7 @@
       "required": true,
       "reason": {
         "enabled": true,
+        "required": false,
         "wordLimit": 30
       }
     },
@@ -81,7 +83,8 @@
       "description": "Note how long you spent in chastity today. If you are required to be in chastity, calculate and note the remaining time in the box. If you've completed your chastity today, note \"Free.\"",
       "reason": {
         "enabled": true,
-        "label": "Remaining Hours:"
+        "label": "Remaining Hours:",
+        "required": false
       }
     },
     {

@@ -3,25 +3,82 @@
   "title": "SurveyForPerfection",
   "questions": [
     {
-      "id": "q_tv",
+      "id": "q_ndliv8",
       "type": "text",
-      "prompt": "List the television shows you watched today",
+      "prompt": "How did you spend your free time today?",
       "required": true,
-      "wordLimit": 30
+      "wordLimit": 40
     },
     {
-      "id": "q_food",
+      "id": "q_f5x6xq",
+      "type": "text",
+      "prompt": "Breakfast:",
+      "required": true,
+      "wordLimit": 20
+    },
+    {
+      "id": "q_8caobr",
+      "type": "text",
+      "prompt": "Lunch:",
+      "required": true,
+      "wordLimit": 20
+    },
+    {
+      "id": "q_k403iq",
+      "type": "text",
+      "prompt": "Dinner:",
+      "required": true,
+      "wordLimit": 20
+    },
+    {
+      "id": "q_76c59f",
+      "type": "text",
+      "prompt": "Snacks:",
+      "required": true,
+      "wordLimit": 20
+    },
+    {
+      "id": "q_icpepn",
+      "type": "text",
+      "prompt": "Media Watched:",
+      "required": true,
+      "wordLimit": 40
+    },
+    {
+      "id": "q_3jzbnf",
       "type": "yesno",
-      "prompt": "Did you eat healthy today?",
+      "prompt": "Orgasmed?",
       "required": true,
-      "reason": { "enabled": true, "wordLimit": 20 }
+      "reason": {
+        "enabled": true,
+        "wordLimit": 30
+      }
     },
     {
-      "id": "q_exercise",
-      "type": "duration",
-      "prompt": "How long did you exercise today?",
+      "id": "q_pmaef7",
+      "type": "yesno",
+      "prompt": "Watched Porn? If yes, list what you watched.",
       "required": true,
-      "reason": { "enabled": false }
+      "reason": {
+        "enabled": true,
+        "wordLimit": 30
+      }
+    },
+    {
+      "id": "q_e3w565",
+      "type": "duration",
+      "prompt": "Time Spent in Chastity",
+      "required": true,
+      "reason": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "q_jl4m89",
+      "type": "text",
+      "prompt": "Strong Sexual Thoughts:",
+      "required": true,
+      "wordLimit": 40
     }
   ]
 }

@@ -184,6 +184,7 @@
           out.reason.wordLimit = r.wordLimit ?? null;
           if (!isLimit(out.reason.wordLimit)) add(i, `${n}: reason word limit must be a whole number of 1 or more.`);
           if (typeof r.label === 'string') out.reason.label = r.label;
+          out.reason.required = r.required === true; // older files have no flag: their boxes stay optional
         }
       }
       return out;
@@ -213,6 +214,7 @@
           if (o.reason.enabled) {
             const label = optText(q.reason.label);
             if (label) o.reason.label = label;
+            o.reason.required = q.reason.required === true;
             if (q.reason.wordLimit != null && q.reason.wordLimit !== '') o.reason.wordLimit = q.reason.wordLimit;
           }
         }
@@ -346,6 +348,13 @@
       if (first) first.focus();
     }
 
+    /** A required reason is asked for once the main answer is given, but never after "Unwilling to answer". */
+    function reasonNeeded(q, a) {
+      if (!q.reason || !q.reason.enabled || !q.reason.required) return false;
+      if (q.type === 'yesno') return !!a.value && a.value !== 'declined';
+      return [a.h, a.m, a.s].some((v) => v != null && v !== '');
+    }
+
     /** Checks the current answer. Returns { ok, message }. */
     function check(q, a) {
       a = a || {};
@@ -368,6 +377,7 @@
         if (q.required && f.every((v) => v == null || v === '')) return { ok: false };
       }
       if (overReason) return { ok: false, message: 'Please shorten your reason' };
+      if (reasonNeeded(q, a) && !(a.reason || '').trim()) return { ok: false };
       return { ok: true };
     }
 
@@ -480,7 +490,7 @@
       let reason = null;
       if (q.reason && q.reason.enabled) {
         reason = h('div', { class: 'reason' }, wordBox({
-          id: 'reason', label: `${optText(q.reason.label) || 'Reason'} (optional)`, value: a.reason, limit: q.reason.wordLimit,
+          id: 'reason', label: (optText(q.reason.label) || 'Reason') + (q.reason.required ? '' : ' (optional)'), value: a.reason, limit: q.reason.wordLimit,
           onInput: (v) => { a.reason = v; refresh(); }, onEnter: goNext,
         }));
       }
@@ -966,7 +976,7 @@
       if (type === 'message') return { id: newId(), type, title: '', body: '', showTitle: false };
       const q = { id: newId(), type, prompt: '', required: true };
       if (type === 'text') q.wordLimit = null;
-      else q.reason = { enabled: false, wordLimit: null };
+      else q.reason = { enabled: false, required: true, wordLimit: null };
       return q;
     }
 
@@ -1115,8 +1125,16 @@
           q.reason = q.reason || { enabled: false };
           const label = textField('Reason label', q.reason.label, 'Reason', (v) => { q.reason.label = v; persist(); });
           const limit = limitField('Reason word limit', q.reason.wordLimit, (v) => { q.reason.wordLimit = v; persist(); });
-          label.hidden = limit.hidden = !q.reason.enabled;
-          opts.push(checkbox('Reason box', q.reason.enabled, (v) => { q.reason.enabled = v; label.hidden = limit.hidden = !v; persist(); }), label, limit);
+          const req = checkbox('Reason required', q.reason.required === true, (v) => { q.reason.required = v; persist(); });
+          const shown = [req, label, limit];
+          for (const el of shown) el.hidden = !q.reason.enabled;
+          opts.push(checkbox('Reason box', q.reason.enabled, (v) => {
+            // A newly switched-on reason box starts as required.
+            if (v && q.reason.required === undefined) { q.reason.required = true; req.querySelector('input').checked = true; }
+            q.reason.enabled = v;
+            for (const el of shown) el.hidden = !v;
+            persist();
+          }), ...shown);
         }
       }
 

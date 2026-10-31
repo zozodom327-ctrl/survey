@@ -29,6 +29,7 @@ In the editor you can:
 
 - **Add** Text, Yes / No or Duration questions, or a **Message**
 - Edit the prompt, toggle **Required**, set **word limits** (blank = no limit), and turn the optional **reason box** on or off
+- Choose whether a reason box is **required** (the default for new boxes) or optional. A required reason must be filled in before Next works, except after "Unwilling to answer"
 - Give a reason box its own **label** (e.g. "What did you eat?"). A custom label shows above the box and on the results card; leave it blank for plain "Reason"
 - Tick **Add description** to show extra help under a question while answering. Descriptions never appear on the results card
 - Use **Messages** for instructions or reminders: a title and a description on their own screen. They don't count as questions. Tick **Show title on results card** to use the title as a section heading on the card
@@ -86,7 +87,8 @@ Then open http://localhost:8000 (press Ctrl+E there for the editor).
 | `prompt` | questions | The question text |
 | `required` | questions | `true` by default; `false` lets people leave it blank |
 | `wordLimit` | text | Max words, or leave out for no limit |
-| `reason.enabled` | yesno, duration | Show an optional reason box |
+| `reason.enabled` | yesno, duration | Show a reason box |
+| `reason.required` | yesno, duration | `true` makes the reason compulsory (not after "Unwilling to answer"); missing or `false` = optional |
 | `reason.wordLimit` | yesno, duration | Max words for the reason |
 | `reason.label` | yesno, duration | Custom label for the reason box (optional) |
 | `description` | text, yesno, duration | Help text shown under the prompt; not on the results card (optional) |

@@ -3,10 +3,18 @@
   "title": "SurveyForPerfection",
   "questions": [
     {
+      "id": "q_6q72jq",
+      "type": "message",
+      "title": "Instructions",
+      "body": "To be completed daily, with all questions fully answered, before midnight.",
+      "showTitle": false
+    },
+    {
       "id": "q_ndliv8",
       "type": "text",
-      "prompt": "How did you spend your free time today?",
+      "prompt": "Free Time",
       "required": true,
+      "description": "Just a simple description of how you spent your free time for the day.",
       "wordLimit": 40
     },
     {
@@ -42,6 +50,7 @@
       "type": "text",
       "prompt": "Media Watched:",
       "required": true,
+      "description": "A short summary of what you watched is sufficient.",
       "wordLimit": 40
     },
     {
@@ -67,18 +76,35 @@
     {
       "id": "q_e3w565",
       "type": "duration",
-      "prompt": "Time Spent in Chastity. Note remaining hours in reason, if any.",
+      "prompt": "Time Spent in Chastity.",
       "required": true,
+      "description": "Note how long you spent in chastity today. If you are required to be in chastity, calculate and note the remaining time in the box. If you've completed your chastity today, note \"Free.\"",
       "reason": {
-        "enabled": true
+        "enabled": true,
+        "label": "Remaining Hours:"
       }
     },
     {
-      "id": "q_jl4m89",
+      "id": "q_a2cg7v",
+      "type": "message",
+      "title": "Reminder:",
+      "body": "Your chastity hours only count once this survey has been submitted - if it's not in a screenshot on the discord server, you're not done.",
+      "showTitle": false
+    },
+    {
+      "id": "q_k2jfoh",
       "type": "text",
       "prompt": "Strong Sexual Thoughts:",
       "required": true,
+      "description": "Note down particularly strong feelings, especially related to commands I gave you. If none, write none.",
       "wordLimit": 40
+    },
+    {
+      "id": "q_qeh41m",
+      "type": "message",
+      "title": "The End!",
+      "body": "Post your results, as an image, in the discord server. The time will be counted by the time listed on the results, not the time of messaging - though there shouldn't be a large delay.",
+      "showTitle": false
     }
   ]
 }

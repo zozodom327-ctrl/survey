@@ -170,7 +170,7 @@
         return out;
       }
 
-      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, choice, duration or message).`);
+      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, choice, duration or message). If the survey was just updated, refresh the page to load the latest version.`);
       out.prompt = typeof q.prompt === 'string' ? q.prompt : '';
       if (!out.prompt.trim()) add(i, `${n} has no prompt.`);
       out.required = q.required !== false;

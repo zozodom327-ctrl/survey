@@ -105,6 +105,13 @@
       }
     },
     {
+      "id": "q_m06e2u",
+      "type": "text",
+      "prompt": "What is the current word count of your book?",
+      "required": true,
+      "wordLimit": 1
+    },
+    {
       "id": "q_qeh41m",
       "type": "message",
       "title": "The End!",

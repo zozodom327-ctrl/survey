@@ -196,6 +196,8 @@ textarea:focus-visible, input:focus-visible { box-shadow: 0 0 0 1px var(--accent
   padding-left: 22px;
   background: var(--surface-2);
 }
+.choice { line-height: 1.3; padding-block: 12px; }
+.choice-declined { margin-top: 6px; }
 .choice[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
@@ -291,6 +293,11 @@ textarea:focus-visible, input:focus-visible { box-shadow: 0 0 0 1px var(--accent
 .opts label.grow { flex: 1 1 220px; }
 .opts label.grow input { flex: 1; min-width: 0; }
 .ed-block { margin-top: 10px; }
+.opt-list { display: grid; gap: 8px; margin-top: 10px; }
+.opt-row { display: flex; align-items: center; gap: 8px; }
+.opt-row input { flex: 1; min-width: 0; }
+.opt-num { width: 1.4em; text-align: right; color: var(--faint); font-style: italic; }
+.opt-del { min-width: 40px; padding: 0; font-size: 1.1rem; }
 textarea.ed-text { min-height: 84px; }
 .card-errors { color: var(--danger); font-size: 0.9rem; margin-top: 8px; }
 

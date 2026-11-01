@@ -2,12 +2,13 @@
 (function () {
   'use strict';
 
-  const TYPES = { text: 'Text', yesno: 'Yes / No', duration: 'Duration', message: 'Message' };
+  const TYPES = { text: 'Text', yesno: 'Yes / No', choice: 'Multiple choice', duration: 'Duration', message: 'Message' };
   const YESNO = [
     { v: 'yes', label: 'Yes' },
     { v: 'no', label: 'No' },
     { v: 'declined', label: 'Unwilling to answer' },
   ];
+  const MAX_OPTIONS = 8;
   const KEY_PROGRESS = 'dailySurvey.progress';
   const KEY_DRAFT = 'dailySurvey.draft';
 
@@ -169,7 +170,7 @@
         return out;
       }
 
-      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, duration or message).`);
+      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, choice, duration or message).`);
       out.prompt = typeof q.prompt === 'string' ? q.prompt : '';
       if (!out.prompt.trim()) add(i, `${n} has no prompt.`);
       out.required = q.required !== false;
@@ -177,7 +178,7 @@
       if (q.type === 'text') {
         out.wordLimit = q.wordLimit ?? null;
         if (!isLimit(out.wordLimit)) add(i, `${n}: word limit must be a whole number of 1 or more.`);
-      } else if (q.type === 'yesno' || q.type === 'duration') {
+      } else {
         const r = q.reason && typeof q.reason === 'object' ? q.reason : {};
         out.reason = { enabled: !!r.enabled };
         if (out.reason.enabled) {
@@ -186,6 +187,13 @@
           if (typeof r.label === 'string') out.reason.label = r.label;
           out.reason.required = r.required === true; // older files have no flag: their boxes stay optional
         }
+      }
+      if (q.type === 'choice') {
+        out.options = Array.isArray(q.options) ? q.options.map((o) => (typeof o === 'string' ? o : '')) : [];
+        if (out.options.length < 2 || out.options.length > MAX_OPTIONS) add(i, `${n} needs between 2 and ${MAX_OPTIONS} options.`);
+        out.options.forEach((o, k) => { if (!o.trim()) add(i, `${n}: option ${k + 1} is empty.`); });
+        const filled = out.options.map((o) => o.trim().toLowerCase()).filter(Boolean);
+        if (new Set(filled).size !== filled.length) add(i, `${n} has two options that are the same.`);
       }
       return out;
     });
@@ -209,6 +217,7 @@
         const desc = optText(q.description);
         if (desc) o.description = desc;
         if (q.type === 'text' && q.wordLimit != null && q.wordLimit !== '') o.wordLimit = q.wordLimit;
+        if (q.type === 'choice') o.options = (q.options || []).map((x) => x.trim());
         if (q.type !== 'text') {
           o.reason = { enabled: !!(q.reason && q.reason.enabled) };
           if (o.reason.enabled) {
@@ -351,7 +360,7 @@
     /** A required reason is asked for once the main answer is given, but never after "Unwilling to answer". */
     function reasonNeeded(q, a) {
       if (!q.reason || !q.reason.enabled || !q.reason.required) return false;
-      if (q.type === 'yesno') return !!a.value && a.value !== 'declined';
+      if (q.type === 'yesno' || q.type === 'choice') return a.value != null && a.value !== 'declined';
       return [a.h, a.m, a.s].some((v) => v != null && v !== '');
     }
 
@@ -362,8 +371,8 @@
       if (q.type === 'text') {
         if (q.wordLimit && countWords(a.text) > q.wordLimit) return { ok: false, message: 'Please shorten your answer' };
         if (q.required && !(a.text || '').trim()) return { ok: false };
-      } else if (q.type === 'yesno') {
-        if (q.required && !a.value) return { ok: false };
+      } else if (q.type === 'yesno' || q.type === 'choice') {
+        if (q.required && a.value == null) return { ok: false };
       } else if (q.type === 'duration') {
         const f = [a.h, a.m, a.s];
         const max = [23, 59, 59];
@@ -471,6 +480,19 @@
           },
         }, o.label));
         body = h('div', { class: 'choices', role: 'group', 'aria-labelledby': promptId }, btns);
+      } else if (q.type === 'choice') {
+        // Options are stored by position; "Unwilling to answer" is always offered last.
+        const choices = [...q.options.map((label, k) => ({ v: k, label })), { v: 'declined', label: YESNO[2].label }];
+        const btns = choices.map((o) => h('button', {
+          type: 'button', class: 'choice' + (o.v === 'declined' ? ' choice-declined' : ''),
+          'data-v': String(o.v), 'aria-pressed': String(a.value === o.v),
+          onclick: () => {
+            a.value = o.v;
+            for (const b of btns) b.setAttribute('aria-pressed', String(b.dataset.v === String(o.v)));
+            refresh();
+          },
+        }, o.label));
+        body = h('div', { class: 'choices', role: 'group', 'aria-labelledby': promptId }, btns);
       } else {
         const field = (key, label, max) => {
           const id = 'dur-' + key;
@@ -543,6 +565,7 @@
       const reason = q.reason && q.reason.enabled && (a.reason || '').trim() ? a.reason.trim() : null;
       if (q.type === 'text') return { text: (a.text || '').trim() || null };
       if (q.type === 'yesno') return { value: a.value || null, reason };
+      if (q.type === 'choice') return { value: a.value ?? null, reason };
       const f = [a.h, a.m, a.s];
       if (f.every((v) => v == null || v === '')) return { seconds: null, reason };
       return { seconds: (+a.h || 0) * 3600 + (+a.m || 0) * 60 + (+a.s || 0), reason };
@@ -639,8 +662,13 @@
       if (q.type === 'text') return { pill: null, text: a.text };
       const label = q.reason && q.reason.enabled ? optText(q.reason.label) : null;
       const d = q.type === 'duration' && a.seconds != null ? formatDuration(a.seconds) : null;
-      if (label) return { pill: q.type === 'yesno' ? a.value : null, text: d, reasonLabel: label, reason: a.reason };
-      if (q.type === 'yesno') return { pill: a.value, text: a.reason };
+      let pill = null;
+      if (q.type === 'yesno') pill = a.value;
+      if (q.type === 'choice' && a.value != null) {
+        pill = a.value === 'declined' ? 'declined' : { label: q.options[a.value] ?? '?', bg: PILL.yes.bg, fg: PILL.yes.fg };
+      }
+      if (label) return { pill, text: d, reasonLabel: label, reason: a.reason };
+      if (q.type === 'yesno' || q.type === 'choice') return { pill, text: a.reason };
       return { pill: null, text: d && a.reason ? `${d} — ${a.reason}` : d || (a.reason ? '— ' + a.reason : null) };
     }
 
@@ -694,16 +722,23 @@
       const rowH = lh(sz.a);
       let firstWidth = width;
       let x0 = 0;
+      let pillAsText = false;
       if (pill) {
-        const p = PILL[pill];
+        const p = typeof pill === 'string' ? PILL[pill] : pill;
         const pFont = `600 ${sz.pill}px ${BODY}`;
         ctx.font = pFont;
         const label = '● ' + p.label;
         const pw = Math.ceil(ctx.measureText(label).width) + 24;
-        const ph = Math.round(sz.pill * 1.65);
-        ops.push({ kind: 'pill', x: 0, y: y + (rowH - ph) / 2, w: pw, h: ph, label, font: pFont, p });
-        firstWidth = width - pw - 10;
-        x0 = pw + 10;
+        if (pw > width) {
+          // Too long for a pill (a wordy multiple-choice option): highlight it as coloured text instead.
+          lines(label, `600 ${sz.a}px ${BODY}`, p.bg || C.sub, sz.a);
+          pillAsText = true;
+        } else {
+          const ph = Math.round(sz.pill * 1.65);
+          ops.push({ kind: 'pill', x: 0, y: y + (rowH - ph) / 2, w: pw, h: ph, label, font: pFont, p });
+          firstWidth = width - pw - 10;
+          x0 = pw + 10;
+        }
       }
       if (text) {
         ctx.font = aFont;
@@ -713,7 +748,7 @@
         });
       } else {
         if (!pill) ops.push({ kind: 'text', str: '—', x: 0, y, font: aFont, color: C.faint, size: sz.a });
-        y += rowH;
+        if (!pillAsText) y += rowH;
       }
 
       if (reason) {
@@ -847,7 +882,8 @@
       for (const item of results.items) {
         if (item.heading != null) { out.push(`__${item.heading}__`, ''); continue; }
         const { pill, text, reasonLabel, reason } = answerParts(item);
-        const ans = pill ? PILL[pill].label + (text ? ' — ' + text : '') : text || '—';
+        const pillLabel = pill && (typeof pill === 'string' ? PILL[pill] : pill).label;
+        const ans = pill ? pillLabel + (text ? ' — ' + text : '') : text || '—';
         out.push(item.q.prompt, '> ' + ans.replace(/\n/g, '\n> '));
         if (reason) out.push(`> *${/[?:.!]$/.test(reasonLabel) ? reasonLabel : reasonLabel + ':'}* ` + reason.replace(/\n/g, '\n> '));
         out.push('');
@@ -975,6 +1011,7 @@
     function blank(type) {
       if (type === 'message') return { id: newId(), type, title: '', body: '', showTitle: false };
       const q = { id: newId(), type, prompt: '', required: true };
+      if (type === 'choice') q.options = ['', ''];
       if (type === 'text') q.wordLimit = null;
       else q.reason = { enabled: false, required: true, wordLimit: null };
       return q;
@@ -1096,6 +1133,39 @@
       let main;
       let opts;
       let extra = null;
+      let choiceEl = null;
+
+      const focusOption = (k) => {
+        const inputs = listEl.children[i] && listEl.children[i].querySelectorAll('.opt-row input');
+        if (inputs && inputs[k]) inputs[k].focus();
+      };
+      const optionsEditor = () => {
+        if (!Array.isArray(q.options)) q.options = ['', ''];
+        const count = q.options.length;
+        const restructure = (fn, focusAt) => { fn(); persist(); renderList(); focusOption(focusAt); };
+        const rows = q.options.map((o, k) => {
+          const inp = h('input', { type: 'text', value: o, placeholder: `Option ${k + 1}`, 'aria-label': `${name} option ${k + 1}` });
+          inp.addEventListener('input', () => { q.options[k] = inp.value; persist(); });
+          inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && count < MAX_OPTIONS) { e.preventDefault(); restructure(() => q.options.splice(k + 1, 0, ''), k + 1); }
+          });
+          return h('div', { class: 'opt-row' },
+            h('span', { class: 'opt-num', 'aria-hidden': 'true' }, String(k + 1)),
+            inp,
+            h('button', {
+              type: 'button', class: 'btn-small opt-del', disabled: count <= 2, 'aria-label': `Remove option ${k + 1}`,
+              onclick: () => restructure(() => q.options.splice(k, 1), Math.min(k, count - 2)),
+            }, '×'));
+        });
+        return h('div', { class: 'opt-list' },
+          rows,
+          h('div', { class: 'row' },
+            h('button', {
+              type: 'button', class: 'btn-small', disabled: count >= MAX_OPTIONS,
+              onclick: () => restructure(() => q.options.push(''), count),
+            }, '+ Add option'),
+            h('span', { class: 'small muted' }, `${count} of ${MAX_OPTIONS} · "${YESNO[2].label}" is always added`)));
+      };
       if (q.type === 'message') {
         main = h('input', { id: pid, type: 'text', value: q.title, placeholder: 'Message title' });
         main.addEventListener('input', () => { q.title = main.value; persist(); });
@@ -1119,6 +1189,7 @@
             persist();
           }),
         ];
+        if (q.type === 'choice') choiceEl = optionsEditor();
         if (q.type === 'text') {
           opts.push(limitField('Word limit', q.wordLimit, (v) => { q.wordLimit = v; persist(); }));
         } else {
@@ -1146,6 +1217,7 @@
           h('span', { class: 'qnum' }, name)),
         h('label', { for: pid, class: 'sr-only' }, q.type === 'message' ? `${name} title` : `${name} prompt`),
         main,
+        choiceEl,
         q.type === 'message' ? extra : null,
         h('div', { class: 'opts' }, opts),
         q.type === 'message' ? null : extra,

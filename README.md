@@ -27,7 +27,8 @@ Respondents never see the editor unless they know the shortcut. Even then, they 
 
 In the editor you can:
 
-- **Add** Text, Yes / No or Duration questions, or a **Message**
+- **Add** Text, Yes / No, Multiple choice or Duration questions, or a **Message**
+- **Multiple choice:** 2 to 8 options (+ Add option, × to remove). "Unwilling to answer" is always offered as well. The chosen option is highlighted as a pill on the results card
 - Edit the prompt, toggle **Required**, set **word limits** (blank = no limit), and turn the optional **reason box** on or off
 - Choose whether a reason box is **required** (the default for new boxes) or optional. A required reason must be filled in before Next works, except after "Unwilling to answer"
 - Give a reason box its own **label** (e.g. "What did you eat?"). A custom label shows above the box and on the results card; leave it blank for plain "Reason"
@@ -83,15 +84,16 @@ Then open http://localhost:8000 (press Ctrl+E there for the editor).
 | Field | Applies to | Meaning |
 | --- | --- | --- |
 | `id` | all | Unique id (the editor makes these; never shown) |
-| `type` | all | `text`, `yesno`, `duration` or `message` |
+| `type` | all | `text`, `yesno`, `choice`, `duration` or `message` |
 | `prompt` | questions | The question text |
 | `required` | questions | `true` by default; `false` lets people leave it blank |
 | `wordLimit` | text | Max words, or leave out for no limit |
-| `reason.enabled` | yesno, duration | Show a reason box |
-| `reason.required` | yesno, duration | `true` makes the reason compulsory (not after "Unwilling to answer"); missing or `false` = optional |
-| `reason.wordLimit` | yesno, duration | Max words for the reason |
-| `reason.label` | yesno, duration | Custom label for the reason box (optional) |
-| `description` | text, yesno, duration | Help text shown under the prompt; not on the results card (optional) |
+| `options` | choice | List of 2–8 answer options, in order |
+| `reason.enabled` | yesno, choice, duration | Show a reason box |
+| `reason.required` | yesno, choice, duration | `true` makes the reason compulsory (not after "Unwilling to answer"); missing or `false` = optional |
+| `reason.wordLimit` | yesno, choice, duration | Max words for the reason |
+| `reason.label` | yesno, choice, duration | Custom label for the reason box (optional) |
+| `description` | all questions | Help text shown under the prompt; not on the results card (optional) |
 | `title` | message | The message's heading |
 | `body` | message | The message text |
 | `showTitle` | message | `true` shows the title as a section heading on the results card |

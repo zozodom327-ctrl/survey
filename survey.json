@@ -112,6 +112,24 @@
       "wordLimit": 1
     },
     {
+      "id": "q_lwtm5u",
+      "type": "choice",
+      "prompt": "Voluntary Worship",
+      "required": true,
+      "description": "Choose an option to indicate if you want to do some extra worship! If you chose an option it's up to me how I'll implement it/if I will. All decisions are final.",
+      "options": [
+        "Chastity",
+        "Square of Fun",
+        "Fun Games!",
+        "Sore Knees",
+        "Sore Other",
+        "No Worship :("
+      ],
+      "reason": {
+        "enabled": false
+      }
+    },
+    {
       "id": "q_qeh41m",
       "type": "message",
       "title": "The End!",

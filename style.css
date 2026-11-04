@@ -182,6 +182,7 @@ textarea, input[type="text"], input[type="number"], input[type="password"] {
   min-height: 48px;
 }
 textarea { min-height: 140px; resize: vertical; line-height: 1.45; }
+textarea.summary-box { min-height: 280px; }
 textarea:focus, input:focus { border-color: var(--accent); outline: none; }
 textarea:focus-visible, input:focus-visible { box-shadow: 0 0 0 1px var(--accent); }
 

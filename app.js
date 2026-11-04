@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const TYPES = { text: 'Text', yesno: 'Yes / No', choice: 'Multiple choice', duration: 'Duration', message: 'Message' };
+  const TYPES = { text: 'Text', yesno: 'Yes / No', choice: 'Multiple choice', duration: 'Duration', summary: 'Summary', message: 'Message' };
   const YESNO = [
     { v: 'yes', label: 'Yes' },
     { v: 'no', label: 'No' },
@@ -170,12 +170,12 @@
         return out;
       }
 
-      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, choice, duration or message). If the survey was just updated, refresh the page to load the latest version.`);
+      if (!TYPES[q.type]) add(i, `${n} has an unknown type "${q.type}" (use text, yesno, choice, duration, summary or message). If the survey was just updated, refresh the page to load the latest version.`);
       out.prompt = typeof q.prompt === 'string' ? q.prompt : '';
       if (!out.prompt.trim()) add(i, `${n} has no prompt.`);
       out.required = q.required !== false;
       if (typeof q.description === 'string') out.description = q.description;
-      if (q.type === 'text') {
+      if (q.type === 'text' || q.type === 'summary') {
         out.wordLimit = q.wordLimit ?? null;
         if (!isLimit(out.wordLimit)) add(i, `${n}: word limit must be a whole number of 1 or more.`);
       } else {
@@ -216,9 +216,9 @@
         const o = { id: q.id, type: q.type, prompt: q.prompt.trim(), required: q.required !== false };
         const desc = optText(q.description);
         if (desc) o.description = desc;
-        if (q.type === 'text' && q.wordLimit != null && q.wordLimit !== '') o.wordLimit = q.wordLimit;
+        if ((q.type === 'text' || q.type === 'summary') && q.wordLimit != null && q.wordLimit !== '') o.wordLimit = q.wordLimit;
         if (q.type === 'choice') o.options = (q.options || []).map((x) => x.trim());
-        if (q.type !== 'text') {
+        if (q.type !== 'text' && q.type !== 'summary') {
           o.reason = { enabled: !!(q.reason && q.reason.enabled) };
           if (o.reason.enabled) {
             const label = optText(q.reason.label);
@@ -368,7 +368,7 @@
     function check(q, a) {
       a = a || {};
       const overReason = q.reason && q.reason.enabled && q.reason.wordLimit && countWords(a.reason) > q.reason.wordLimit;
-      if (q.type === 'text') {
+      if (q.type === 'text' || q.type === 'summary') {
         if (q.wordLimit && countWords(a.text) > q.wordLimit) return { ok: false, message: 'Please shorten your answer' };
         if (q.required && !(a.text || '').trim()) return { ok: false };
       } else if (q.type === 'yesno' || q.type === 'choice') {
@@ -464,12 +464,14 @@
       const desc = optText(q.description);
       const descId = desc ? 'desc-' + q.id : null;
       let body;
-      if (q.type === 'text') {
+      if (q.type === 'text' || q.type === 'summary') {
         body = wordBox({
           id: 'ans', multiline: true, value: a.text, limit: q.wordLimit,
           onInput: (v) => { a.text = v; refresh(); },
         });
-        body.querySelector('textarea').setAttribute('aria-labelledby', promptId);
+        const box = body.querySelector('textarea');
+        box.setAttribute('aria-labelledby', promptId);
+        if (q.type === 'summary') { box.classList.add('summary-box'); box.rows = 10; }
       } else if (q.type === 'yesno') {
         const btns = YESNO.map((o) => h('button', {
           type: 'button', class: 'choice', 'data-v': o.v, 'aria-pressed': String(a.value === o.v),
@@ -563,7 +565,7 @@
 
     function toAnswer(q, a) {
       const reason = q.reason && q.reason.enabled && (a.reason || '').trim() ? a.reason.trim() : null;
-      if (q.type === 'text') return { text: (a.text || '').trim() || null };
+      if (q.type === 'text' || q.type === 'summary') return { text: (a.text || '').trim() || null };
       if (q.type === 'yesno') return { value: a.value || null, reason };
       if (q.type === 'choice') return { value: a.value ?? null, reason };
       const f = [a.h, a.m, a.s];
@@ -659,7 +661,7 @@
     /** Splits an answer into what the card shows. A custom reason label puts the reason on its own lines. */
     function answerParts(item) {
       const { q, a } = item;
-      if (q.type === 'text') return { pill: null, text: a.text };
+      if (q.type === 'text' || q.type === 'summary') return { pill: null, text: a.text };
       const label = q.reason && q.reason.enabled ? optText(q.reason.label) : null;
       const d = q.type === 'duration' && a.seconds != null ? formatDuration(a.seconds) : null;
       let pill = null;
@@ -782,10 +784,12 @@
       ops.push({ kind: 'hrule', y });
       y += 22;
 
+      const { columns, summaries } = sections(results.items);
+
       // Two columns read like a book spread: down the left, then down the right.
-      const twoCol = results.items.length > 1;
+      const twoCol = columns.length > 1;
       const colW = twoCol ? (INNER - GAP) / 2 : INNER;
-      const blocks = results.items.map((item) => measureItem(ctx, item, colW, sz, lh));
+      const blocks = columns.map((item) => measureItem(ctx, item, colW, sz, lh));
       let split = blocks.length;
       if (twoCol) {
         const total = blocks.reduce((s, b) => s + b.h, 0);
@@ -809,7 +813,44 @@
       });
       const bottom = top + Math.max(colH[0], colH[1]) - ITEM_GAP;
       if (twoCol) ops.push({ kind: 'vrule', x: X0 + colW + GAP / 2, y0: top, y1: bottom });
-      return { ops, height: Math.ceil(bottom + 34) };
+      y = columns.length ? bottom : top - 22;
+
+      // Summaries: longer writing, full width in their own section at the foot of the card.
+      summaries.forEach((item, i) => {
+        y += i === 0 ? (columns.length ? 26 : 22) : ITEM_GAP;
+        if (i === 0 && columns.length) { ops.push({ kind: 'hrule', y: y - 4 }); y += 22; }
+        const b = measureSummary(ctx, item, sz, lh);
+        for (const op of b.ops) ops.push({ ...op, x: op.x + X0, y: op.y + y });
+        y += b.h;
+      });
+      return { ops, height: Math.ceil(y + 34) };
+    }
+
+    /** Splits card items into the two-column part and the summaries that go full width below it. */
+    function sections(items) {
+      const isSummary = (it) => it.q && it.q.type === 'summary';
+      const columns = items.filter((it) => !isSummary(it));
+      // A heading with nothing after it in the columns (e.g. one placed just before the summaries) is dropped.
+      while (columns.length && columns[columns.length - 1].heading != null) columns.pop();
+      return { columns, summaries: items.filter(isSummary) };
+    }
+
+    /** Lays out one summary across the full card width at (0, 0). Returns { ops, h }. */
+    function measureSummary(ctx, item, sz, lh) {
+      const ops = [];
+      let y = 0;
+      const lines = (str, font, color, size) => {
+        ctx.font = font;
+        for (const line of wrap(ctx, str, INNER, INNER)) {
+          if (line) ops.push({ kind: 'text', str: line, x: 0, y, font, color, size });
+          y += lh(size);
+        }
+      };
+      lines(item.q.prompt, `400 ${sz.q}px ${BODY}`, C.q, sz.q);
+      y += 3;
+      if (item.a.text) lines(item.a.text, `400 ${sz.a}px ${BODY}`, C.answer, sz.a);
+      else lines('—', `400 ${sz.a}px ${BODY}`, C.faint, sz.a);
+      return { ops, h: y };
     }
 
     function draw(results) {
@@ -879,7 +920,8 @@
         results.title,
         '',
       ];
-      for (const item of results.items) {
+      const { columns, summaries } = sections(results.items);
+      for (const item of [...columns, ...summaries]) {
         if (item.heading != null) { out.push(`__${item.heading}__`, ''); continue; }
         const { pill, text, reasonLabel, reason } = answerParts(item);
         const pillLabel = pill && (typeof pill === 'string' ? PILL[pill] : pill).label;
@@ -1012,7 +1054,7 @@
       if (type === 'message') return { id: newId(), type, title: '', body: '', showTitle: false };
       const q = { id: newId(), type, prompt: '', required: true };
       if (type === 'choice') q.options = ['', ''];
-      if (type === 'text') q.wordLimit = null;
+      if (type === 'text' || type === 'summary') q.wordLimit = null;
       else q.reason = { enabled: false, required: true, wordLimit: null };
       return q;
     }
@@ -1190,7 +1232,7 @@
           }),
         ];
         if (q.type === 'choice') choiceEl = optionsEditor();
-        if (q.type === 'text') {
+        if (q.type === 'text' || q.type === 'summary') {
           opts.push(limitField('Word limit', q.wordLimit, (v) => { q.wordLimit = v; persist(); }));
         } else {
           q.reason = q.reason || { enabled: false };

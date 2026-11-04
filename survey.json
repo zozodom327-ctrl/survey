@@ -35,10 +35,18 @@
     {
       "id": "q_icpepn",
       "type": "text",
-      "prompt": "Media Watched:",
+      "prompt": "Traditional Media Watched:",
       "required": true,
       "description": "A short summary of what you watched is sufficient.",
       "wordLimit": 40
+    },
+    {
+      "id": "q_v19sb6",
+      "type": "text",
+      "prompt": "Youtube Videos Watched:",
+      "required": true,
+      "description": "List exact titles only, if none, write \"None.\"",
+      "wordLimit": 60
     },
     {
       "id": "q_3jzbnf",
@@ -52,11 +60,11 @@
       }
     },
     {
-      "id": "q_pmaef7",
-      "type": "yesno",
-      "prompt": "Watched Porn?",
+      "id": "q_bhhtiz",
+      "type": "duration",
+      "prompt": "Time Spent Watching Porn:",
       "required": true,
-      "description": "If \"yes\" provide a brief description, I will judge =p",
+      "description": "Note how long you spent watching porn, and what you watched if not 0.",
       "reason": {
         "enabled": true,
         "label": "Description:",
@@ -118,7 +126,7 @@
       "required": true,
       "description": "Choose an option to indicate if you want to do some extra worship! If you chose an option it's up to me how I'll implement it/if I will. All decisions are final.",
       "options": [
-        "Chastity",
+        "More Chastity",
         "Fun Games!",
         "Sore Knees",
         "No Worship :("

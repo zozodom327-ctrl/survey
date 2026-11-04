@@ -45,7 +45,7 @@
       "type": "text",
       "prompt": "Youtube Videos Watched:",
       "required": true,
-      "description": "List exact titles only, if none, write \"None.\"",
+      "description": "List exact titles only. If none, write \"None.\"",
       "wordLimit": 60
     },
     {
@@ -87,8 +87,8 @@
     {
       "id": "q_a2cg7v",
       "type": "message",
-      "title": "Reminder:",
-      "body": "Your chastity hours only count once this survey has been submitted - if it's not in a screenshot on the discord server, you're not done.",
+      "title": "Enjoy those 80 hours :D",
+      "body": "",
       "showTitle": false
     },
     {
@@ -124,23 +124,17 @@
       "type": "choice",
       "prompt": "Voluntary Worship",
       "required": true,
-      "description": "Choose an option to indicate if you want to do some extra worship! If you chose an option it's up to me how I'll implement it/if I will. All decisions are final.",
+      "description": "Choose an option to indicate if you want to do some extra worship! If you chose an option it's up to me how I'll implement it/if I will. All decisions are final, and selecting something here indicates you are willing and have time to do it the following day.",
       "options": [
         "More Chastity",
         "Fun Games!",
         "Sore Knees",
+        "One Hour <3",
         "No Worship :("
       ],
       "reason": {
         "enabled": false
       }
-    },
-    {
-      "id": "q_qeh41m",
-      "type": "message",
-      "title": "The End!",
-      "body": "Post your results, as an image, in the discord server.",
-      "showTitle": false
     },
     {
       "id": "q_vaddvv",
@@ -149,6 +143,13 @@
       "required": false,
       "description": "A place for you to put general thoughts so I can keep track of your mood and what you're enjoying/not enjoying. If you did anything for me not mentioned in previous responses make sure to note it here.",
       "wordLimit": 100
+    },
+    {
+      "id": "q_qeh41m",
+      "type": "message",
+      "title": "Small Changes - Please Review",
+      "body": "I made a few small changes today, go back and review to make sure you answered all questions correctly before submitting.",
+      "showTitle": false
     }
   ]
 }

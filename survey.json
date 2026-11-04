@@ -141,6 +141,14 @@
       "title": "The End!",
       "body": "Post your results, as an image, in the discord server.",
       "showTitle": false
+    },
+    {
+      "id": "q_vaddvv",
+      "type": "summary",
+      "prompt": "General Thoughts/Other things done for me",
+      "required": false,
+      "description": "A place for you to put general thoughts so I can keep track of your mood and what you're enjoying/not enjoying. If you did anything for me not mentioned in previous responses make sure to note it here.",
+      "wordLimit": 100
     }
   ]
 }

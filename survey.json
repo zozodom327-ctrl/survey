@@ -85,13 +85,6 @@
       }
     },
     {
-      "id": "q_a2cg7v",
-      "type": "message",
-      "title": "Enjoy those 80 hours :D",
-      "body": "",
-      "showTitle": false
-    },
-    {
       "id": "q_k2jfoh",
       "type": "text",
       "prompt": "Strong Sexual Thoughts:",
@@ -137,19 +130,19 @@
       }
     },
     {
+      "id": "q_ybnn8g",
+      "type": "text",
+      "prompt": "Counting Time!",
+      "required": true,
+      "description": "List the quantity of the following things you have in your house, with a brief description if necessary:\nForks, Knives, Spoons, Glasses\n\nFeel free to complete this tomorrow if you don't have time tonight."
+    },
+    {
       "id": "q_vaddvv",
       "type": "summary",
       "prompt": "General Thoughts/Other things done for me",
       "required": false,
       "description": "A place for you to put general thoughts so I can keep track of your mood and what you're enjoying/not enjoying. If you did anything for me not mentioned in previous responses make sure to note it here.",
       "wordLimit": 100
-    },
-    {
-      "id": "q_qeh41m",
-      "type": "message",
-      "title": "Small Changes - Please Review",
-      "body": "I made a few small changes today, go back and review to make sure you answered all questions correctly before submitting.",
-      "showTitle": false
     }
   ]
 }

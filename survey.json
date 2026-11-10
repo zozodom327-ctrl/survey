@@ -130,13 +130,6 @@
       }
     },
     {
-      "id": "q_ybnn8g",
-      "type": "text",
-      "prompt": "Counting Time!",
-      "required": true,
-      "description": "List the quantity of the following things you have in your house, with a brief description if necessary:\nForks, Knives, Spoons, Glasses\n\nFeel free to complete this tomorrow if you don't have time tonight."
-    },
-    {
       "id": "q_vaddvv",
       "type": "summary",
       "prompt": "General Thoughts/Other things done for me",

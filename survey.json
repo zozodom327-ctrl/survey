@@ -37,7 +37,7 @@
       "type": "text",
       "prompt": "Traditional Media Watched:",
       "required": true,
-      "description": "A short summary of what you watched is sufficient.",
+      "description": "List exact titles of what you watched with bbfc classification. If none, write \"None.\"",
       "wordLimit": 40
     },
     {
@@ -104,6 +104,14 @@
         "required": false,
         "wordLimit": 40
       }
+    },
+    {
+      "id": "q_za4hw9",
+      "type": "text",
+      "prompt": "Permissions Granted/Denied",
+      "required": true,
+      "description": "List anything you asked me permission for since the last survey, and whether you were granted or denied permission.",
+      "wordLimit": 40
     },
     {
       "id": "q_m06e2u",

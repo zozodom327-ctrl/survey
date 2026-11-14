@@ -38,7 +38,7 @@
       "prompt": "Traditional Media Watched:",
       "required": true,
       "description": "List exact titles of what you watched with bbfc classification. If none, write \"None.\"",
-      "wordLimit": 40
+      "wordLimit": 60
     },
     {
       "id": "q_v19sb6",
@@ -129,7 +129,6 @@
       "options": [
         "More Chastity",
         "Fun Games!",
-        "Sore Knees",
         "One Hour <3",
         "No Worship :("
       ],

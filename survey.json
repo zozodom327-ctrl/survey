@@ -6,16 +6,8 @@
       "id": "q_6q72jq",
       "type": "message",
       "title": "Instructions",
-      "body": "To be completed daily, with all questions fully answered, before midnight.",
+      "body": "To be completed daily, with all questions fully answered, before 10am.",
       "showTitle": false
-    },
-    {
-      "id": "q_ndliv8",
-      "type": "text",
-      "prompt": "Free Time",
-      "required": true,
-      "description": "Just a simple description of how you spent your free time for the day.",
-      "wordLimit": 40
     },
     {
       "id": "q_76c59f",

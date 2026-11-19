@@ -37,7 +37,7 @@
       "type": "text",
       "prompt": "Youtube Videos Watched:",
       "required": true,
-      "description": "List exact titles only. If none, write \"None.\"",
+      "description": "List exact titles for long videos watched. List summary of smaller videos/browsing. \nIf none, write \"None.\"",
       "wordLimit": 60
     },
     {

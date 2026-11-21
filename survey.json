@@ -65,14 +65,6 @@
       }
     },
     {
-      "id": "q_k2jfoh",
-      "type": "text",
-      "prompt": "Strong Sexual Thoughts:",
-      "required": true,
-      "description": "Note down particularly strong feelings, especially related to commands I gave you. If none, write none.",
-      "wordLimit": 40
-    },
-    {
       "id": "q_y09u15",
       "type": "duration",
       "prompt": "Time Spent Doing Perfection Tasks",
@@ -83,6 +75,29 @@
         "label": "Tasks:",
         "required": false,
         "wordLimit": 40
+      }
+    },
+    {
+      "id": "q_k2jfoh",
+      "type": "text",
+      "prompt": "Strong Sexual Thoughts:",
+      "required": true,
+      "description": "Note down particularly strong feelings, especially related to commands I gave you. If none, write none.",
+      "wordLimit": 40
+    },
+    {
+      "id": "q_y5peme",
+      "type": "choice",
+      "prompt": "Erections",
+      "required": true,
+      "options": [
+        "None",
+        "1",
+        "2",
+        "3+"
+      ],
+      "reason": {
+        "enabled": false
       }
     },
     {
@@ -124,10 +139,10 @@
       "required": true,
       "description": "Choose an option to indicate if you want to do some extra worship! If you chose an option it's up to me how I'll implement it/if I will. All decisions are final, and selecting something here indicates you are willing and have time to do it the following day.",
       "options": [
-        "More Chastity",
+        "More Denial",
         "Fun Games!",
         "One Hour <3",
-        "Porridge",
+        "More Porridge :D",
         "No Worship :("
       ],
       "reason": {

@@ -69,7 +69,7 @@
       "type": "duration",
       "prompt": "Time Spent Doing Perfection Tasks",
       "required": true,
-      "description": "List all time you spent doing tasks/chores assigned by me. Note down what you did, or select '0' if none.",
+      "description": "List all time you spent doing tasks/chores assigned by me. Note down what you did, or select '0' if none. Progress on weekly chores should also be tracked here.",
       "reason": {
         "enabled": true,
         "label": "Tasks:",
@@ -94,7 +94,8 @@
         "None",
         "1",
         "2",
-        "3+"
+        "3 - 5",
+        "6+"
       ],
       "reason": {
         "enabled": false
@@ -115,6 +116,24 @@
         "label": "Remaining Days:",
         "required": false,
         "wordLimit": 3
+      }
+    },
+    {
+      "id": "q_ltr4tu",
+      "type": "choice",
+      "prompt": "Current Weekly Chores",
+      "required": true,
+      "description": "To track any weekly chores Perfection has given you. All weekly chores are to be completed within 7 days of being assigned unless granted and extension. If \"not completed\" is selected note the chore & remaining days.",
+      "options": [
+        "Completed",
+        "Not Completed",
+        "Not Assigned"
+      ],
+      "reason": {
+        "enabled": true,
+        "label": "Remaining Days:",
+        "required": false,
+        "wordLimit": 15
       }
     },
     {
